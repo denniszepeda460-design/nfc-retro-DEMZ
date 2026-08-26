@@ -159,10 +159,10 @@
       new VirtualDPad(controlsLayer, {
         targetStageId: '',
         layout: {
-          left: 'clamp(10px, 4vmin, 28px)',
-          bottom: 'clamp(18px, 6vmin, 40px)',
-          width: 'clamp(130px, 40vmin, 190px)',
-          height: 'clamp(130px, 40vmin, 190px)',
+          left: '4vmin',
+          bottom: '6vmin',
+          width: '40vmin',
+          height: '40vmin',
           zIndex: 100
         },
         mapping: {
@@ -184,10 +184,10 @@
         targetStageId: '',
         mapping: { code: 'KeyZ', key: 'z' },
         layout: {
-          right: 'clamp(65px, 22vmin, 130px)',
-          bottom: 'clamp(14px, 5vmin, 32px)',
-          width: 'clamp(48px, 16vmin, 78px)',
-          height: 'clamp(48px, 16vmin, 78px)',
+          right: '22vmin',
+          bottom: '5vmin',
+          width: '16vmin',
+          height: '16vmin',
           zIndex: 100
         }
       });
@@ -198,10 +198,10 @@
         targetStageId: '',
         mapping: { code: 'KeyX', key: 'x' },
         layout: {
-          right: 'clamp(10px, 3.8vmin, 24px)',
-          bottom: 'clamp(55px, 19vmin, 110px)',
-          width: 'clamp(48px, 16vmin, 78px)',
-          height: 'clamp(48px, 16vmin, 78px)',
+          right: '3.8vmin',
+          bottom: '19vmin',
+          width: '16vmin',
+          height: '16vmin',
           zIndex: 100
         }
       });
@@ -212,10 +212,10 @@
         targetStageId: '',
         mapping: { code: 'KeyA', key: 'a' },
         layout: {
-          right: 'clamp(120px, 41vmin, 190px)',
-          bottom: 'clamp(55px, 19vmin, 110px)',
-          width: 'clamp(48px, 16vmin, 78px)',
-          height: 'clamp(48px, 16vmin, 78px)',
+          right: '41vmin',
+          bottom: '19vmin',
+          width: '16vmin',
+          height: '16vmin',
           zIndex: 100
         }
       });
@@ -226,10 +226,10 @@
         targetStageId: '',
         mapping: { code: 'KeyS', key: 's' },
         layout: {
-          right: 'clamp(65px, 22vmin, 130px)',
-          bottom: 'clamp(95px, 32.5vmin, 190px)',
-          width: 'clamp(48px, 16vmin, 78px)',
-          height: 'clamp(48px, 16vmin, 78px)',
+          right: '22vmin',
+          bottom: '32.5vmin',
+          width: '16vmin',
+          height: '16vmin',
           zIndex: 100
         }
       });
@@ -240,10 +240,10 @@
         targetStageId: '',
         mapping: { code: 'KeyQ', key: 'q' },
         layout: {
-          left: 'clamp(10px, 3.8vmin, 24px)',
-          bottom: 'clamp(150px, 52.5vmin, 300px)',
-          width: 'clamp(65px, 22.5vmin, 130px)',
-          height: 'clamp(40px, 14vmin, 80px)',
+          left: '3.8vmin',
+          bottom: '52.5vmin',
+          width: '22.5vmin',
+          height: '14vmin',
           zIndex: 100
         }
       });
@@ -253,24 +253,26 @@
         targetStageId: '',
         mapping: { code: 'KeyW', key: 'w' },
         layout: {
-          right: 'clamp(10px, 3.8vmin, 24px)',
-          bottom: 'clamp(150px, 52.5vmin, 300px)',
-          width: 'clamp(65px, 22.5vmin, 130px)',
-          height: 'clamp(40px, 14vmin, 80px)',
+          right: '3.8vmin',
+          bottom: '52.5vmin',
+          width: '22.5vmin',
+          height: '14vmin',
           zIndex: 100
         }
       });
 
       // Select & Start
+      // Nota: el parser de OmniPad no soporta calc()/clamp() (solo "número+unidad"
+      // simple), así que para centrarlos usamos "left" en % puro en vez de calc(50% ± N).
       new VirtualButton(controlsLayer, {
         label: 'SELECT',
         targetStageId: '',
         mapping: { code: 'ShiftRight', key: 'Shift' },
         layout: {
-          left: 'calc(50% - clamp(50px, 19.5vmin, 110px))',
-          bottom: 'clamp(13px, 4.5vmin, 26px)',
-          width: 'clamp(50px, 17vmin, 96px)',
-          height: 'clamp(26px, 9vmin, 50px)',
+          left: '32%',
+          bottom: '4.5vmin',
+          width: '17vmin',
+          height: '9vmin',
           zIndex: 100
         }
       });
@@ -280,10 +282,10 @@
         targetStageId: '',
         mapping: { code: 'Enter', key: 'Enter' },
         layout: {
-          left: 'calc(50% + clamp(7px, 2.5vmin, 14px))',
-          bottom: 'clamp(13px, 4.5vmin, 26px)',
-          width: 'clamp(50px, 17vmin, 96px)',
-          height: 'clamp(26px, 9vmin, 50px)',
+          left: '54%',
+          bottom: '4.5vmin',
+          width: '17vmin',
+          height: '9vmin',
           zIndex: 100
         }
       });
