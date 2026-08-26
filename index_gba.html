@@ -1,66 +1,101 @@
 ﻿<!DOCTYPE html>
-<html lang=es>
+<html lang="es">
 <head>
-  <meta charset=UTF-8>
-  <meta name=viewport content=width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no>
-  <meta name=apple-mobile-web-app-capable content=yes>
-  <meta name=mobile-web-app-capable content=yes>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
   <title>GBA - NFC Retro</title>
-  <link rel=stylesheet href=assets/omnipad.css>
-  <link rel=stylesheet href=style.css>
+  <link rel="stylesheet" href="assets/omnipad.css">
+  <link rel="stylesheet" href="style.css">
+
+  <style>
+    /* BLOQUEO DE MENÚS Y SELECCIÓN NATIVA */
+    body, html, #app-container, #controls-layer, canvas {
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      -khtml-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+      touch-action: none;
+      outline: none;
+    }
+
+    /* ESTILOS DEL MENÚ DE SISTEMA (GUARDAR) */
+    #sys-menu {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      z-index: 999;
+      display: flex;
+      gap: 10px;
+    }
+    .sys-btn {
+      background: rgba(0, 0, 0, 0.7);
+      color: #fff;
+      border: 2px solid #fff;
+      border-radius: 8px;
+      padding: 8px 15px;
+      font-family: sans-serif;
+      font-size: 14px;
+      font-weight: bold;
+      text-transform: uppercase;
+      cursor: pointer;
+    }
+    .sys-btn:active {
+      background: rgba(255, 255, 255, 0.3);
+    }
+  </style>
 </head>
 <body>
-  <div id=app-container>
-    <!-- Game Canvas (Native GBA resolution: 240x160) -->
-    <canvas id=screen width=240 height=160></canvas>
+  <div id="app-container">
+    <!-- Game Canvas -->
+    <canvas id="screen" width="240" height="160"></canvas>
+
+    <!-- UI Sistema -->
+    <div id="sys-menu">
+      <button id="btn-save" class="sys-btn">💾 Guardar (In-Game)</button>
+    </div>
 
     <!-- OmniPad Controls Layer -->
-    <div id=controls-layer></div>
+    <div id="controls-layer"></div>
 
-    <!-- Status / Touch-to-Start Overlay -->
-    <div id=status-overlay>
-      <div class=spinner id=spinner></div>
-      <div class=status-text id=status-text>Cargando ROM de GBA...</div>
+    <!-- Status / Overlay -->
+    <div id="status-overlay">
+      <div class="spinner" id="spinner"></div>
+      <div class="status-text" id="status-text">Cargando ROM de GBA...</div>
     </div>
   </div>
 
   <!-- Core Scripts -->
-  <script src=cores/iodine.js></script>
-  <script src=assets/omnipad.js></script>
+  <script src="cores/iodine.js"></script>
+  <script src="assets/omnipad.js"></script>
 
   <script>
-    // ==========================================
-    // 1. CONFIGURACIÓN DEL EMULADOR (IodineGBA)
-    // ==========================================
+    // Prevenir el menú contextual globalmente
+    window.addEventListener('contextmenu', function(e) { e.preventDefault(); });
+
     const canvas = document.getElementById('screen');
     const statusOverlay = document.getElementById('status-overlay');
     const statusText = document.getElementById('status-text');
     const spinner = document.getElementById('spinner');
     const controlsLayer = document.getElementById('controls-layer');
 
-    // Inicializar subsistemas de video y audio
     const gfx = new GfxGlueCode(240, 160);
     gfx.attachCanvas(canvas);
 
     let audio = null;
-    try {
-      audio = new GlueCodeMixer();
-    } catch (e) {
-      console.warn('Audio mixer deferred:', e);
-    }
+    try { audio = new GlueCodeMixer(); } catch (e) {}
 
     const iodine = new GameBoyAdvanceEmulator();
     iodine.attachGraphicsFrameHandler(gfx);
-    if (audio) {
-      iodine.attachAudioHandler(audio);
-    }
+    if (audio) { iodine.attachAudioHandler(audio); }
 
-    // Configuración de rendimiento de Iodine
     iodine.settings.SKIPBoot = true;
     iodine.settings.dynamicSpeed = false;
     iodine.settings.offthreadGfxEnabled = false;
 
-    // Loop de ejecución de frames (60 FPS sincronizado con rAF/Interval)
     let emulatorTimer = null;
     function startEmulationLoop() {
       if (emulatorTimer) return;
@@ -69,7 +104,6 @@
       }, 16);
     }
 
-    // Desbloqueo de AudioContext para navegadores móviles (iOS/Android)
     let audioUnlocked = false;
     function unlockMobileAudio() {
       if (audioUnlocked) return;
@@ -83,193 +117,91 @@
     window.addEventListener('touchstart', unlockMobileAudio, { passive: true });
     window.addEventListener('click', unlockMobileAudio, { passive: true });
 
-    // ==========================================
-    // 2. MAPEO DE CONTROLES E INTERMEDIARIO (BRIDGE)
-    // ==========================================
-    // Índices de botones nativos en IodineGBA:
-    // 0: A, 1: B, 2: Select, 3: Start, 4: Right, 5: Left, 6: Up, 7: Down, 8: R, 9: L
-    const GBA_BUTTONS = {
-      A: 0,
-      B: 1,
-      SELECT: 2,
-      START: 3,
-      RIGHT: 4,
-      LEFT: 5,
-      UP: 6,
-      DOWN: 7,
-      R: 8,
-      L: 9
-    };
+    const GBA_BUTTONS = { A: 0, B: 1, SELECT: 2, START: 3, RIGHT: 4, LEFT: 5, UP: 6, DOWN: 7, R: 8, L: 9 };
 
-    // Bridge de entrada para garantizar 0ms de latencia
     const EmulatorBridge = {
-      press(btnIndex) {
-        unlockMobileAudio();
-        iodine.keyDown(btnIndex);
-      },
-      release(btnIndex) {
-        iodine.keyUp(btnIndex);
-      }
+      press(btnIndex) { unlockMobileAudio(); iodine.keyDown(btnIndex); },
+      release(btnIndex) { iodine.keyUp(btnIndex); }
     };
 
-    // Soporte para teclado físico (para pruebas en Desktop)
     const KEYBOARD_MAP = {
-      'KeyX': GBA_BUTTONS.A,
-      'KeyZ': GBA_BUTTONS.B,
-      'Enter': GBA_BUTTONS.START,
-      'ShiftRight': GBA_BUTTONS.SELECT,
-      'ShiftLeft': GBA_BUTTONS.SELECT,
-      'ArrowUp': GBA_BUTTONS.UP,
-      'ArrowDown': GBA_BUTTONS.DOWN,
-      'ArrowLeft': GBA_BUTTONS.LEFT,
-      'ArrowRight': GBA_BUTTONS.RIGHT,
-      'KeyA': GBA_BUTTONS.L,
-      'KeyS': GBA_BUTTONS.R
+      'KeyX': GBA_BUTTONS.A, 'KeyZ': GBA_BUTTONS.B, 'Enter': GBA_BUTTONS.START, 'ShiftRight': GBA_BUTTONS.SELECT,
+      'ArrowUp': GBA_BUTTONS.UP, 'ArrowDown': GBA_BUTTONS.DOWN, 'ArrowLeft': GBA_BUTTONS.LEFT, 'ArrowRight': GBA_BUTTONS.RIGHT,
+      'KeyA': GBA_BUTTONS.L, 'KeyS': GBA_BUTTONS.R
     };
 
     window.addEventListener('keydown', (e) => {
       const btn = KEYBOARD_MAP[e.code];
-      if (btn !== undefined) {
-        EmulatorBridge.press(btn);
-        e.preventDefault();
-      }
+      if (btn !== undefined) { EmulatorBridge.press(btn); e.preventDefault(); }
     });
-
     window.addEventListener('keyup', (e) => {
       const btn = KEYBOARD_MAP[e.code];
-      if (btn !== undefined) {
-        EmulatorBridge.release(btn);
-        e.preventDefault();
-      }
+      if (btn !== undefined) { EmulatorBridge.release(btn); e.preventDefault(); }
     });
 
     // ==========================================
-    // 3. INTEGRACIÓN DE OMNIPAD (TOUCH CONTROLS)
+    // 3. INTEGRACIÓN DE OMNIPAD (TOUCH CONTROLS - ESTILO SNES)
     // ==========================================
     function setupTouchControls() {
       const { VirtualDPad, VirtualButton, TargetZone } = window.OmniPad;
 
-      // Zona objetivo principal
-      new TargetZone(controlsLayer, {
-        widgetId: '',
-        layout: { left: 0, top: 0, width: '100%', height: '100%' }
-      });
+      new TargetZone(controlsLayer, { layout: { left: '0px', top: '0px', width: '100%', height: '100%' } });
 
-      // 1. D-Pad (Cruceta izquierda)
+      // D-Pad
       new VirtualDPad(controlsLayer, {
-        targetStageId: '',
-        layout: {
-          left: '20px',
-          bottom: '30px',
-          width: '135px',
-          height: '135px',
-          zIndex: 100
-        },
-        mapping: {
-          up: 'ArrowUp',
-          down: 'ArrowDown',
-          left: 'ArrowLeft',
-          right: 'ArrowRight'
-        }
+        layout: { left: '4vmin', bottom: '6vmin', width: '36vmin', height: '36vmin' },
+        mapping: { up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight' }
       });
 
-      // 2. Botón B
+      // Botón A (Derecha)
       new VirtualButton(controlsLayer, {
-        label: 'B',
-        targetStageId: '',
-        mapping: { code: 'KeyZ', key: 'z' },
-        layout: {
-          right: '90px',
-          bottom: '35px',
-          width: '60px',
-          height: '60px',
-          zIndex: 100
-        }
+        label: 'A', mapping: { code: 'KeyX', key: 'x' },
+        layout: { right: '4vmin', bottom: '16vmin', width: '13vmin', height: '13vmin' }
       });
 
-      // 3. Botón A
+      // Botón B (Abajo)
       new VirtualButton(controlsLayer, {
-        label: 'A',
-        targetStageId: '',
-        mapping: { code: 'KeyX', key: 'x' },
-        layout: {
-          right: '25px',
-          bottom: '55px',
-          width: '60px',
-          height: '60px',
-          zIndex: 100
-        }
+        label: 'B', mapping: { code: 'KeyZ', key: 'z' },
+        layout: { right: '18vmin', bottom: '3vmin', width: '13vmin', height: '13vmin' }
       });
 
-      // 4. Gatillos L y R
+      // Select & Start
       new VirtualButton(controlsLayer, {
-        label: 'L',
-        targetStageId: '',
-        mapping: { code: 'KeyA', key: 'a' },
-        layout: {
-          left: '20px',
-          top: '20px',
-          width: '65px',
-          height: '38px',
-          zIndex: 100
-        }
+        label: 'SELECT', mapping: { code: 'ShiftRight', key: 'Shift' },
+        layout: { left: '22%', bottom: '48vmin', width: '18vmin', height: '8vmin' }
       });
 
       new VirtualButton(controlsLayer, {
-        label: 'R',
-        targetStageId: '',
-        mapping: { code: 'KeyS', key: 's' },
-        layout: {
-          right: '20px',
-          top: '20px',
-          width: '65px',
-          height: '38px',
-          zIndex: 100
-        }
+        label: 'START', mapping: { code: 'Enter', key: 'Enter' },
+        layout: { right: '22%', bottom: '48vmin', width: '18vmin', height: '8vmin' }
       });
 
-      // 5. Select & Start
+      // Gatillos L y R
       new VirtualButton(controlsLayer, {
-        label: 'SELECT',
-        targetStageId: '',
-        mapping: { code: 'ShiftRight', key: 'Shift' },
-        layout: {
-          left: 'calc(50% - 65px)',
-          bottom: '15px',
-          width: '55px',
-          height: '28px',
-          zIndex: 100
-        }
+        label: 'L', mapping: { code: 'KeyA', key: 'a' },
+        layout: { left: '4vmin', bottom: '60vmin', width: '22vmin', height: '12vmin' }
       });
-
       new VirtualButton(controlsLayer, {
-        label: 'START',
-        targetStageId: '',
-        mapping: { code: 'Enter', key: 'Enter' },
-        layout: {
-          left: 'calc(50% + 10px)',
-          bottom: '15px',
-          width: '55px',
-          height: '28px',
-          zIndex: 100
-        }
+        label: 'R', mapping: { code: 'KeyS', key: 's' },
+        layout: { right: '4vmin', bottom: '60vmin', width: '22vmin', height: '12vmin' }
       });
     }
 
     // ==========================================
     // 4. AUTO-CARGA Y ARRANQUE DE LA ROM
     // ==========================================
+    document.getElementById('btn-save').addEventListener('click', () => {
+      alert('Para guardar juegos en GBA, utiliza el menú de guardado dentro del propio juego (Ej: Menú START -> Guardar).');
+    });
+
     async function loadROM() {
-      // Obtener ROM desde parámetro URL ?rom= o por defecto roms/test.gba
       const params = new URLSearchParams(window.location.search);
       const romUrl = params.get('rom') || 'roms/test.gba';
 
       try {
-        statusText.textContent = Descargando ROM ()...;
+        statusText.textContent = `Descargando ROM...`;
         const res = await fetch(romUrl);
-        if (!res.ok) {
-          throw new Error(ROM no encontrada (HTTP ). Coloca tu archivo en '' o usa ?rom=url);
-        }
+        if (!res.ok) throw new Error(`ROM no encontrada.`);
 
         const buffer = await res.arrayBuffer();
         const romData = new Uint8Array(buffer);
@@ -279,18 +211,16 @@
         iodine.play();
         startEmulationLoop();
 
-        // Ocultar overlay
         spinner.style.display = 'none';
         statusOverlay.classList.add('hidden');
       } catch (err) {
-        console.error('Error al cargar la ROM:', err);
+        console.error('Error:', err);
         spinner.style.display = 'none';
-        statusText.innerHTML = ⚠️ <b>Error al cargar</b><br><br><br><small>Toca la pantalla para reintentar</small>;
+        statusText.innerHTML = '⚠️ <b>Error al cargar</b><br><br><br><small>Toca la pantalla para reintentar</small>';
         statusOverlay.onclick = () => location.reload();
       }
     }
 
-    // Inicialización al cargar el DOM
     window.addEventListener('DOMContentLoaded', () => {
       setupTouchControls();
       loadROM();

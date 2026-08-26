@@ -1,41 +1,87 @@
 ﻿<!DOCTYPE html>
-<html lang=es>
+<html lang="es">
 <head>
-  <meta charset=UTF-8>
-  <meta name=viewport content=width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no>
-  <meta name=apple-mobile-web-app-capable content=yes>
-  <meta name=mobile-web-app-capable content=yes>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
   <title>GB/GBC - NFC Retro</title>
-  <link rel=stylesheet href=assets/omnipad.css>
-  <link rel=stylesheet href=style.css>
+  <link rel="stylesheet" href="assets/omnipad.css">
+  <link rel="stylesheet" href="style.css">
+  
+  <style>
+    /* BLOQUEO DE MENÚS Y SELECCIÓN NATIVA */
+    body, html, #app-container, #controls-layer, canvas {
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      -khtml-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+      touch-action: none;
+      outline: none;
+    }
+
+    /* ESTILOS DEL MENÚ DE SISTEMA (GUARDAR) */
+    #sys-menu {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      z-index: 999;
+      display: flex;
+      gap: 10px;
+    }
+    .sys-btn {
+      background: rgba(0, 0, 0, 0.7);
+      color: #fff;
+      border: 2px solid #fff;
+      border-radius: 8px;
+      padding: 8px 15px;
+      font-family: sans-serif;
+      font-size: 14px;
+      font-weight: bold;
+      text-transform: uppercase;
+      cursor: pointer;
+    }
+    .sys-btn:active {
+      background: rgba(255, 255, 255, 0.3);
+    }
+  </style>
 </head>
 <body>
-  <div id=app-container>
-    <!-- Game Canvas (Game Boy resolution: 160x144) -->
-    <canvas id=screen width=160 height=144></canvas>
+  <div id="app-container">
+    <!-- Game Canvas -->
+    <canvas id="screen" width="160" height="144"></canvas>
+
+    <!-- UI Sistema (Guardar) -->
+    <div id="sys-menu">
+      <button id="btn-save" class="sys-btn">💾 Guardar Estado</button>
+    </div>
 
     <!-- OmniPad Controls Layer -->
-    <div id=controls-layer></div>
+    <div id="controls-layer"></div>
 
-    <!-- Status / Loading Overlay -->
-    <div id=status-overlay>
-      <div class=spinner id=spinner></div>
-      <div class=status-text id=status-text>Cargando ROM de Game Boy...</div>
+    <!-- Status / Overlay -->
+    <div id="status-overlay">
+      <div class="spinner" id="spinner"></div>
+      <div class="status-text" id="status-text">Cargando ROM de Game Boy...</div>
     </div>
   </div>
 
   <!-- Core Scripts -->
-  <script src=cores/wasmboy.js></script>
-  <script src=assets/omnipad.js></script>
+  <script src="cores/wasmboy.js"></script>
+  <script src="assets/omnipad.js"></script>
 
   <script>
+    // Prevenir el menú contextual en Android/iOS
+    window.addEventListener('contextmenu', function(e) { e.preventDefault(); });
+
     const canvas = document.getElementById('screen');
     const statusOverlay = document.getElementById('status-overlay');
     const statusText = document.getElementById('status-text');
     const spinner = document.getElementById('spinner');
     const controlsLayer = document.getElementById('controls-layer');
 
-    // Desbloqueo de audio para móviles
     function unlockMobileAudio() {
       if (window.WasmBoy && window.WasmBoy._audioContext) {
         if (window.WasmBoy._audioContext.state === 'suspended') {
@@ -47,96 +93,59 @@
     window.addEventListener('click', unlockMobileAudio, { passive: true });
 
     // ==========================================
-    // 1. INTEGRACIÓN DE OMNIPAD (TOUCH CONTROLS)
+    // 1. INTEGRACIÓN DE OMNIPAD (TOUCH CONTROLS - ESTILO SNES)
     // ==========================================
     function setupTouchControls() {
       const { VirtualDPad, VirtualButton, TargetZone } = window.OmniPad;
 
       new TargetZone(controlsLayer, {
-        widgetId: '',
-        layout: { left: 0, top: 0, width: '100%', height: '100%' }
+        layout: { left: '0px', top: '0px', width: '100%', height: '100%' }
       });
 
       // D-Pad
       new VirtualDPad(controlsLayer, {
-        targetStageId: '',
-        layout: {
-          left: '20px',
-          bottom: '30px',
-          width: '135px',
-          height: '135px',
-          zIndex: 100
-        },
-        mapping: {
-          up: 'ArrowUp',
-          down: 'ArrowDown',
-          left: 'ArrowLeft',
-          right: 'ArrowRight'
-        }
+        layout: { left: '4vmin', bottom: '6vmin', width: '36vmin', height: '36vmin' },
+        mapping: { up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight' }
       });
 
-      // Botón B (Game Boy layout: B a la izquierda, A a la derecha)
+      // Botón A (Derecha)
       new VirtualButton(controlsLayer, {
-        label: 'B',
-        targetStageId: '',
-        mapping: { code: 'KeyX', key: 'x' },
-        layout: {
-          right: '90px',
-          bottom: '35px',
-          width: '60px',
-          height: '60px',
-          zIndex: 100
-        }
+        label: 'A', mapping: { code: 'KeyZ', key: 'z' },
+        layout: { right: '4vmin', bottom: '16vmin', width: '13vmin', height: '13vmin' }
       });
 
-      // Botón A
+      // Botón B (Abajo)
       new VirtualButton(controlsLayer, {
-        label: 'A',
-        targetStageId: '',
-        mapping: { code: 'KeyZ', key: 'z' },
-        layout: {
-          right: '25px',
-          bottom: '55px',
-          width: '60px',
-          height: '60px',
-          zIndex: 100
-        }
+        label: 'B', mapping: { code: 'KeyX', key: 'x' },
+        layout: { right: '18vmin', bottom: '3vmin', width: '13vmin', height: '13vmin' }
       });
 
       // Select & Start
       new VirtualButton(controlsLayer, {
-        label: 'SELECT',
-        targetStageId: '',
-        mapping: { code: 'ShiftRight', key: 'Shift' },
-        layout: {
-          left: 'calc(50% - 65px)',
-          bottom: '15px',
-          width: '55px',
-          height: '28px',
-          zIndex: 100
-        }
+        label: 'SELECT', mapping: { code: 'ShiftRight', key: 'Shift' },
+        layout: { left: '22%', bottom: '48vmin', width: '18vmin', height: '8vmin' }
       });
 
       new VirtualButton(controlsLayer, {
-        label: 'START',
-        targetStageId: '',
-        mapping: { code: 'Enter', key: 'Enter' },
-        layout: {
-          left: 'calc(50% + 10px)',
-          bottom: '15px',
-          width: '55px',
-          height: '28px',
-          zIndex: 100
-        }
+        label: 'START', mapping: { code: 'Enter', key: 'Enter' },
+        layout: { right: '22%', bottom: '48vmin', width: '18vmin', height: '8vmin' }
       });
     }
 
     // ==========================================
-    // 2. INICIALIZACIÓN DE WASMBOY Y AUTO-CARGA
+    // 2. INICIALIZACIÓN DE WASMBOY
     // ==========================================
+    document.getElementById('btn-save').addEventListener('click', async () => {
+      try {
+        await window.WasmBoy.saveState();
+        alert('¡Partida de Game Boy guardada en el navegador! 💾');
+      } catch(e) {
+        alert('Error al guardar: ' + e);
+      }
+    });
+
     async function initGameBoy() {
       setupTouchControls();
-
       const params = new URLSearchParams(window.location.search);
       const romUrl = params.get('rom') || 'roms/test.gb';
 
@@ -152,11 +161,9 @@
           responsiveGamepad: true
         });
 
-        statusText.textContent = Descargando ROM ()...;
+        statusText.textContent = `Descargando ROM...`;
         const res = await fetch(romUrl);
-        if (!res.ok) {
-          throw new Error(ROM no encontrada (HTTP ). Coloca tu archivo en '' o usa ?rom=url);
-        }
+        if (!res.ok) throw new Error(`ROM no encontrada. Usa ?rom=url`);
 
         const buffer = await res.arrayBuffer();
         const romData = new Uint8Array(buffer);
@@ -170,7 +177,7 @@
       } catch (err) {
         console.error('Error:', err);
         spinner.style.display = 'none';
-        statusText.innerHTML = ⚠️ <b>Error al cargar</b><br><br><br><small>Toca la pantalla para reintentar</small>;
+        statusText.innerHTML = '⚠️ <b>Error al cargar</b><br><br><br><small>Toca la pantalla para reintentar</small>';
         statusOverlay.onclick = () => location.reload();
       }
     }
