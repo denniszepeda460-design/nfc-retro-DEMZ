@@ -1,0 +1,142 @@
+﻿/* NFC Retro Keychains - Mobile-First High Performance Styles */
+:root {
+  --bg-color: #000000;
+  --gamepad-opacity: 0.75;
+  --gamepad-active-opacity: 1;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: none;
+}
+
+html, body {
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  background-color: var(--bg-color);
+  color: #ffffff;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  position: fixed;
+  inset: 0;
+}
+
+#app-container {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #000000;
+  overflow: hidden;
+}
+
+#screen {
+  display: block;
+  max-width: 100vw;
+  max-height: 100vh;
+  max-height: 100dvh;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: -webkit-crisp-edges;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  background-color: #000000;
+  z-index: 1;
+}
+
+/* OmniPad Overlay Layer */
+#controls-layer {
+  position: absolute;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  pointer-events: none;
+  z-index: 100;
+}
+
+#controls-layer > * {
+  pointer-events: auto;
+}
+
+/* Custom styles for virtual controls */
+.omnipad-dpad, .omnipad-button {
+  opacity: var(--gamepad-opacity);
+  transition: opacity 0.15s ease, transform 0.08s ease;
+}
+
+.omnipad-dpad:active, .omnipad-button:active,
+.omnipad-button.is-active {
+  opacity: var(--gamepad-active-opacity);
+}
+
+/* Loading / Status Overlay */
+#status-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.85);
+  color: #fff;
+  z-index: 200;
+  transition: opacity 0.3s ease;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+#status-overlay.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(255, 255, 255, 0.2);
+  border-top-color: #00ffcc;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-bottom: 12px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.status-text {
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  text-align: center;
+  padding: 0 20px;
+}
+
+/* Orientation specific layout adjustments */
+@media (orientation: portrait) {
+  #screen {
+    max-height: 48vh;
+    align-self: flex-start;
+    margin-top: 4vh;
+  }
+}
+
+@media (orientation: landscape) {
+  #screen {
+    max-width: 82vw;
+    height: 100%;
+  }
+}

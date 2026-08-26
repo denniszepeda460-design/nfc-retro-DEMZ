@@ -1,0 +1,365 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>SNES - NFC Retro</title>
+  <link rel="stylesheet" href="assets/omnipad.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app-container">
+    <!-- Game Canvas (SNES Native: 256x224) -->
+    <canvas id="screen" width="256" height="224"></canvas>
+
+    <!-- OmniPad Controls Layer -->
+    <div id="controls-layer"></div>
+
+    <!-- Status / Touch-to-Start Overlay -->
+    <div id="status-overlay">
+      <div class="spinner" id="spinner"></div>
+      <div class="status-text" id="status-text">Cargando ROM de SNES...</div>
+    </div>
+  </div>
+
+  <!-- Core Scripts -->
+  <script type="module" src="cores/snes9x_2005.js"></script>
+  <script src="assets/omnipad.js"></script>
+
+  <script type="module">
+    import createSnes9xModule from './cores/snes9x_2005.js';
+
+    const canvas = document.getElementById('screen');
+    const ctx = canvas.getContext('2d');
+    const statusOverlay = document.getElementById('status-overlay');
+    const statusText = document.getElementById('status-text');
+    const spinner = document.getElementById('spinner');
+    const controlsLayer = document.getElementById('controls-layer');
+
+    // ==========================================
+    // 1. MAPEO DE BOTONES SNES (BITMASKS)
+    // ==========================================
+    // Definición estándar de bits para Snes9x
+    const SNES_MASKS = {
+      R: 1 << 4,
+      L: 1 << 5,
+      X: 1 << 6,
+      A: 1 << 7,
+      RIGHT: 1 << 8,
+      LEFT: 1 << 9,
+      DOWN: 1 << 10,
+      UP: 1 << 11,
+      START: 1 << 12,
+      SELECT: 1 << 13,
+      Y: 1 << 14,
+      B: 1 << 15
+    };
+
+    let joypadState = 0;
+
+    const SnesBridge = {
+      press(mask) {
+        joypadState |= mask;
+        unlockMobileAudio();
+      },
+      release(mask) {
+        joypadState &= ~mask;
+      }
+    };
+
+    // Soporte teclado físico (Desktop)
+    const KEY_TO_MASK = {
+      'ArrowUp': SNES_MASKS.UP,
+      'ArrowDown': SNES_MASKS.DOWN,
+      'ArrowLeft': SNES_MASKS.LEFT,
+      'ArrowRight': SNES_MASKS.RIGHT,
+      'KeyX': SNES_MASKS.A,
+      'KeyZ': SNES_MASKS.B,
+      'KeyS': SNES_MASKS.X,
+      'KeyA': SNES_MASKS.Y,
+      'KeyQ': SNES_MASKS.L,
+      'KeyW': SNES_MASKS.R,
+      'Enter': SNES_MASKS.START,
+      'ShiftRight': SNES_MASKS.SELECT,
+      'ShiftLeft': SNES_MASKS.SELECT
+    };
+
+    window.addEventListener('keydown', (e) => {
+      const mask = KEY_TO_MASK[e.code];
+      if (mask !== undefined) {
+        SnesBridge.press(mask);
+        e.preventDefault();
+      }
+    });
+
+    window.addEventListener('keyup', (e) => {
+      const mask = KEY_TO_MASK[e.code];
+      if (mask !== undefined) {
+        SnesBridge.release(mask);
+        e.preventDefault();
+      }
+    });
+
+    // ==========================================
+    // 2. AUDIO WEB API (36.000 Hz)
+    // ==========================================
+    let audioCtx = null;
+    let audioGain = null;
+
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 36000 });
+        audioGain = audioCtx.createGain();
+        audioGain.gain.setValueAtTime(0.5, audioCtx.currentTime);
+        audioGain.connect(audioCtx.destination);
+      }
+    }
+
+    function unlockMobileAudio() {
+      if (!audioCtx) initAudio();
+      if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+    }
+    window.addEventListener('touchstart', unlockMobileAudio, { passive: true });
+    window.addEventListener('click', unlockMobileAudio, { passive: true });
+
+    function playAudioSamples(samples) {
+      if (!audioCtx || audioCtx.state !== 'running') return;
+      const buffer = audioCtx.createBuffer(2, 2048, 36000);
+      const chLeft = buffer.getChannelData(0);
+      const chRight = buffer.getChannelData(1);
+      for (let i = 0; i < 2048; i++) {
+        chLeft[i] = samples[i];
+        chRight[i] = samples[i + 2048];
+      }
+      const source = audioCtx.createBufferSource();
+      source.buffer = buffer;
+      source.connect(audioGain);
+      source.addEventListener('ended', () => source.disconnect());
+      source.start();
+    }
+
+    // ==========================================
+    // 3. INTEGRACIÓN DE OMNIPAD (TOUCH CONTROLS)
+    // ==========================================
+    function setupTouchControls() {
+      const { VirtualDPad, VirtualButton, TargetZone } = window.OmniPad;
+
+      new TargetZone(controlsLayer, {
+        widgetId: '',
+        layout: { left: 0, top: 0, width: '100%', height: '100%' }
+      });
+
+      // D-Pad
+      new VirtualDPad(controlsLayer, {
+        targetStageId: '',
+        layout: {
+          left: '20px',
+          bottom: '30px',
+          width: '135px',
+          height: '135px',
+          zIndex: 100
+        },
+        mapping: {
+          up: 'ArrowUp',
+          down: 'ArrowDown',
+          left: 'ArrowLeft',
+          right: 'ArrowRight'
+        }
+      });
+
+      // SNES Diamond Button Layout:
+      //      (X)
+      //  (Y)     (A)
+      //      (B)
+
+      // Botón B (Abajo)
+      new VirtualButton(controlsLayer, {
+        label: 'B',
+        targetStageId: '',
+        mapping: { code: 'KeyZ', key: 'z' },
+        layout: {
+          right: '75px',
+          bottom: '25px',
+          width: '52px',
+          height: '52px',
+          zIndex: 100
+        }
+      });
+
+      // Botón A (Derecha)
+      new VirtualButton(controlsLayer, {
+        label: 'A',
+        targetStageId: '',
+        mapping: { code: 'KeyX', key: 'x' },
+        layout: {
+          right: '20px',
+          bottom: '60px',
+          width: '52px',
+          height: '52px',
+          zIndex: 100
+        }
+      });
+
+      // Botón Y (Izquierda)
+      new VirtualButton(controlsLayer, {
+        label: 'Y',
+        targetStageId: '',
+        mapping: { code: 'KeyA', key: 'a' },
+        layout: {
+          right: '130px',
+          bottom: '60px',
+          width: '52px',
+          height: '52px',
+          zIndex: 100
+        }
+      });
+
+      // Botón X (Arriba)
+      new VirtualButton(controlsLayer, {
+        label: 'X',
+        targetStageId: '',
+        mapping: { code: 'KeyS', key: 's' },
+        layout: {
+          right: '75px',
+          bottom: '95px',
+          width: '52px',
+          height: '52px',
+          zIndex: 100
+        }
+      });
+
+      // Gatillos L y R
+      new VirtualButton(controlsLayer, {
+        label: 'L',
+        targetStageId: '',
+        mapping: { code: 'KeyQ', key: 'q' },
+        layout: {
+          left: '20px',
+          top: '20px',
+          width: '65px',
+          height: '38px',
+          zIndex: 100
+        }
+      });
+
+      new VirtualButton(controlsLayer, {
+        label: 'R',
+        targetStageId: '',
+        mapping: { code: 'KeyW', key: 'w' },
+        layout: {
+          right: '20px',
+          top: '20px',
+          width: '65px',
+          height: '38px',
+          zIndex: 100
+        }
+      });
+
+      // Select & Start
+      new VirtualButton(controlsLayer, {
+        label: 'SELECT',
+        targetStageId: '',
+        mapping: { code: 'ShiftRight', key: 'Shift' },
+        layout: {
+          left: 'calc(50% - 65px)',
+          bottom: '15px',
+          width: '55px',
+          height: '28px',
+          zIndex: 100
+        }
+      });
+
+      new VirtualButton(controlsLayer, {
+        label: 'START',
+        targetStageId: '',
+        mapping: { code: 'Enter', key: 'Enter' },
+        layout: {
+          left: 'calc(50% + 10px)',
+          bottom: '15px',
+          width: '55px',
+          height: '28px',
+          zIndex: 100
+        }
+      });
+    }
+
+    // ==========================================
+    // 4. INICIALIZACIÓN DE SNES9X-WASM Y JUEGO
+    // ==========================================
+    let Module = null;
+    const FRAME_BUFFER_SIZE = 512 * 448 * 4;
+    const imgData = new ImageData(512, 448);
+
+    function mainEmulationLoop() {
+      Module._setJoypadInput(joypadState);
+      Module._mainLoop();
+
+      // Renderizar Framebuffer
+      const screenPtr = Module._getScreenBuffer();
+      const screenBytes = new Uint8Array(Module.HEAPU8.buffer, screenPtr, FRAME_BUFFER_SIZE);
+      imgData.data.set(screenBytes);
+      ctx.putImageData(imgData, 0, 0, 0, 0, 256, 224);
+
+      // Reproducir Audio
+      if (audioCtx && audioCtx.state === 'running') {
+        const soundPtr = Module._getSoundBuffer();
+        if (soundPtr) {
+          const soundData = new Float32Array(Module.HEAPF32.buffer, soundPtr, 4096);
+          playAudioSamples(soundData);
+        }
+      }
+
+      requestAnimationFrame(mainEmulationLoop);
+    }
+
+    async function initSNES() {
+      setupTouchControls();
+
+      const params = new URLSearchParams(window.location.search);
+         const romUrl = params.get('rom') || 'roms/Super_Mario_World.sfc';
+
+      try {
+        statusText.textContent = 'Cargando motor WebAssembly...';
+        initAudio();
+
+        Module = await createSnes9xModule({
+          locateFile(path) {
+            return 'cores/' + path;
+          }
+        });
+
+        statusText.textContent = `Descargando ROM (${romUrl})...`;
+        const res = await fetch(romUrl);
+        if (!res.ok) {
+          throw new Error(`ROM no encontrada (HTTP ${res.status}). Coloca tu archivo en '${romUrl}' o usa ?rom=url`);
+        }
+
+        const buffer = await res.arrayBuffer();
+        const romData = new Uint8Array(buffer);
+
+        statusText.textContent = 'Iniciando juego...';
+        const romPtr = Module._my_malloc(romData.length);
+        Module.HEAPU8.set(romData, romPtr);
+        Module._startWithRom(romPtr, romData.length, 36000);
+        Module._my_free(romPtr);
+
+        spinner.style.display = 'none';
+        statusOverlay.classList.add('hidden');
+
+        requestAnimationFrame(mainEmulationLoop);
+      } catch (err) {
+        console.error('Error:', err);
+        spinner.style.display = 'none';
+        statusText.innerHTML = `⚠️ <b>Error al cargar</b><br><br>${err.message}<br><small>Toca la pantalla para reintentar</small>`;
+        statusOverlay.onclick = () => location.reload();
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', initSNES);
+  </script>
+</body>
+</html>
