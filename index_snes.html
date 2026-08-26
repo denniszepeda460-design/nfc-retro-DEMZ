@@ -41,7 +41,6 @@
     // ==========================================
     // 1. MAPEO DE BOTONES SNES (BITMASKS)
     // ==========================================
-    // Definición estándar de bits para Snes9x
     const SNES_MASKS = {
       R: 1 << 4,
       L: 1 << 5,
@@ -69,7 +68,6 @@
       }
     };
 
-    // Soporte teclado físico (Desktop)
     const KEY_TO_MASK = {
       'ArrowUp': SNES_MASKS.UP,
       'ArrowDown': SNES_MASKS.DOWN,
@@ -144,26 +142,22 @@
 
     // ==========================================
     // 3. INTEGRACIÓN DE OMNIPAD (TOUCH CONTROLS)
-    //    Layout responsivo: vmin + clamp() para que
-    //    se adapte a cualquier tamaño de pantalla.
     // ==========================================
     function setupTouchControls() {
       const { VirtualDPad, VirtualButton, TargetZone } = window.OmniPad;
 
+      // Usar strings puros con unidad 'px' para evitar que el parser crashee
       new TargetZone(controlsLayer, {
-        widgetId: '',
-        layout: { left: 0, top: 0, width: '100%', height: '100%' }
+        layout: { left: '0px', top: '0px', width: '100%', height: '100%' }
       });
 
       // D-Pad
       new VirtualDPad(controlsLayer, {
-        targetStageId: '',
         layout: {
           left: '4vmin',
           bottom: '6vmin',
           width: '40vmin',
-          height: '40vmin',
-          zIndex: 100
+          height: '40vmin'
         },
         mapping: {
           up: 'ArrowUp',
@@ -173,120 +167,97 @@
         }
       });
 
-      // SNES Diamond Button Layout:
-      //      (X)
-      //  (Y)     (A)
-      //      (B)
-
       // Botón B (Abajo)
       new VirtualButton(controlsLayer, {
         label: 'B',
-        targetStageId: '',
         mapping: { code: 'KeyZ', key: 'z' },
         layout: {
           right: '22vmin',
           bottom: '5vmin',
           width: '16vmin',
-          height: '16vmin',
-          zIndex: 100
+          height: '16vmin'
         }
       });
 
       // Botón A (Derecha)
       new VirtualButton(controlsLayer, {
         label: 'A',
-        targetStageId: '',
         mapping: { code: 'KeyX', key: 'x' },
         layout: {
           right: '3.8vmin',
           bottom: '19vmin',
           width: '16vmin',
-          height: '16vmin',
-          zIndex: 100
+          height: '16vmin'
         }
       });
 
       // Botón Y (Izquierda)
       new VirtualButton(controlsLayer, {
         label: 'Y',
-        targetStageId: '',
         mapping: { code: 'KeyA', key: 'a' },
         layout: {
           right: '41vmin',
           bottom: '19vmin',
           width: '16vmin',
-          height: '16vmin',
-          zIndex: 100
+          height: '16vmin'
         }
       });
 
       // Botón X (Arriba)
       new VirtualButton(controlsLayer, {
         label: 'X',
-        targetStageId: '',
         mapping: { code: 'KeyS', key: 's' },
         layout: {
           right: '22vmin',
           bottom: '32.5vmin',
           width: '16vmin',
-          height: '16vmin',
-          zIndex: 100
+          height: '16vmin'
         }
       });
 
-      // Gatillos L y R (en la zona inferior, sobre el D-Pad y los botones de acción)
+      // Gatillos L y R
       new VirtualButton(controlsLayer, {
         label: 'L',
-        targetStageId: '',
         mapping: { code: 'KeyQ', key: 'q' },
         layout: {
           left: '3.8vmin',
           bottom: '52.5vmin',
           width: '22.5vmin',
-          height: '14vmin',
-          zIndex: 100
+          height: '14vmin'
         }
       });
 
       new VirtualButton(controlsLayer, {
         label: 'R',
-        targetStageId: '',
         mapping: { code: 'KeyW', key: 'w' },
         layout: {
           right: '3.8vmin',
           bottom: '52.5vmin',
           width: '22.5vmin',
-          height: '14vmin',
-          zIndex: 100
+          height: '14vmin'
         }
       });
 
       // Select & Start
-      // Nota: el parser de OmniPad no soporta calc()/clamp() (solo "número+unidad"
-      // simple), así que para centrarlos usamos "left" en % puro en vez de calc(50% ± N).
       new VirtualButton(controlsLayer, {
         label: 'SELECT',
-        targetStageId: '',
         mapping: { code: 'ShiftRight', key: 'Shift' },
         layout: {
           left: '32%',
           bottom: '4.5vmin',
           width: '17vmin',
-          height: '9vmin',
-          zIndex: 100
+          height: '9vmin'
         }
       });
 
       new VirtualButton(controlsLayer, {
         label: 'START',
-        targetStageId: '',
         mapping: { code: 'Enter', key: 'Enter' },
         layout: {
           left: '54%',
           bottom: '4.5vmin',
           width: '17vmin',
-          height: '9vmin',
-          zIndex: 100
+          height: '9vmin'
         }
       });
     }
@@ -302,13 +273,11 @@
       Module._setJoypadInput(joypadState);
       Module._mainLoop();
 
-      // Renderizar Framebuffer
       const screenPtr = Module._getScreenBuffer();
       const screenBytes = new Uint8Array(Module.HEAPU8.buffer, screenPtr, FRAME_BUFFER_SIZE);
       imgData.data.set(screenBytes);
       ctx.putImageData(imgData, 0, 0, 0, 0, 256, 224);
 
-      // Reproducir Audio
       if (audioCtx && audioCtx.state === 'running') {
         const soundPtr = Module._getSoundBuffer();
         if (soundPtr) {
@@ -324,7 +293,7 @@
       setupTouchControls();
 
       const params = new URLSearchParams(window.location.search);
-         const romUrl = params.get('rom') || 'roms/Super_Mario_World.sfc';
+      const romUrl = params.get('rom') || 'roms/Super_Mario_World.sfc';
 
       try {
         statusText.textContent = 'Cargando motor WebAssembly...';
