@@ -144,6 +144,8 @@
 
     // ==========================================
     // 3. INTEGRACIÓN DE OMNIPAD (TOUCH CONTROLS)
+    //    Layout responsivo: vmin + clamp() para que
+    //    se adapte a cualquier tamaño de pantalla.
     // ==========================================
     function setupTouchControls() {
       const { VirtualDPad, VirtualButton, TargetZone } = window.OmniPad;
@@ -157,10 +159,10 @@
       new VirtualDPad(controlsLayer, {
         targetStageId: '',
         layout: {
-          left: '15px',
-          bottom: '25px',
-          width: '165px',
-          height: '165px',
+          left: 'clamp(10px, 4vmin, 28px)',
+          bottom: 'clamp(18px, 6vmin, 40px)',
+          width: 'clamp(130px, 40vmin, 190px)',
+          height: 'clamp(130px, 40vmin, 190px)',
           zIndex: 100
         },
         mapping: {
@@ -182,10 +184,10 @@
         targetStageId: '',
         mapping: { code: 'KeyZ', key: 'z' },
         layout: {
-          right: '90px',
-          bottom: '20px',
-          width: '65px',
-          height: '65px',
+          right: 'clamp(65px, 22vmin, 130px)',
+          bottom: 'clamp(14px, 5vmin, 32px)',
+          width: 'clamp(48px, 16vmin, 78px)',
+          height: 'clamp(48px, 16vmin, 78px)',
           zIndex: 100
         }
       });
@@ -196,10 +198,10 @@
         targetStageId: '',
         mapping: { code: 'KeyX', key: 'x' },
         layout: {
-          right: '15px',
-          bottom: '75px',
-          width: '65px',
-          height: '65px',
+          right: 'clamp(10px, 3.8vmin, 24px)',
+          bottom: 'clamp(55px, 19vmin, 110px)',
+          width: 'clamp(48px, 16vmin, 78px)',
+          height: 'clamp(48px, 16vmin, 78px)',
           zIndex: 100
         }
       });
@@ -210,10 +212,10 @@
         targetStageId: '',
         mapping: { code: 'KeyA', key: 'a' },
         layout: {
-          right: '165px',
-          bottom: '75px',
-          width: '65px',
-          height: '65px',
+          right: 'clamp(120px, 41vmin, 190px)',
+          bottom: 'clamp(55px, 19vmin, 110px)',
+          width: 'clamp(48px, 16vmin, 78px)',
+          height: 'clamp(48px, 16vmin, 78px)',
           zIndex: 100
         }
       });
@@ -224,10 +226,10 @@
         targetStageId: '',
         mapping: { code: 'KeyS', key: 's' },
         layout: {
-          right: '90px',
-          bottom: '130px',
-          width: '65px',
-          height: '65px',
+          right: 'clamp(65px, 22vmin, 130px)',
+          bottom: 'clamp(95px, 32.5vmin, 190px)',
+          width: 'clamp(48px, 16vmin, 78px)',
+          height: 'clamp(48px, 16vmin, 78px)',
           zIndex: 100
         }
       });
@@ -238,10 +240,10 @@
         targetStageId: '',
         mapping: { code: 'KeyQ', key: 'q' },
         layout: {
-          left: '15px',
-          bottom: '210px',
-          width: '90px',
-          height: '55px',
+          left: 'clamp(10px, 3.8vmin, 24px)',
+          bottom: 'clamp(150px, 52.5vmin, 300px)',
+          width: 'clamp(65px, 22.5vmin, 130px)',
+          height: 'clamp(40px, 14vmin, 80px)',
           zIndex: 100
         }
       });
@@ -251,10 +253,10 @@
         targetStageId: '',
         mapping: { code: 'KeyW', key: 'w' },
         layout: {
-          right: '15px',
-          bottom: '210px',
-          width: '90px',
-          height: '55px',
+          right: 'clamp(10px, 3.8vmin, 24px)',
+          bottom: 'clamp(150px, 52.5vmin, 300px)',
+          width: 'clamp(65px, 22.5vmin, 130px)',
+          height: 'clamp(40px, 14vmin, 80px)',
           zIndex: 100
         }
       });
@@ -265,10 +267,10 @@
         targetStageId: '',
         mapping: { code: 'ShiftRight', key: 'Shift' },
         layout: {
-          left: 'calc(50% - 78px)',
-          bottom: '18px',
-          width: '68px',
-          height: '36px',
+          left: 'calc(50% - clamp(50px, 19.5vmin, 110px))',
+          bottom: 'clamp(13px, 4.5vmin, 26px)',
+          width: 'clamp(50px, 17vmin, 96px)',
+          height: 'clamp(26px, 9vmin, 50px)',
           zIndex: 100
         }
       });
@@ -278,10 +280,10 @@
         targetStageId: '',
         mapping: { code: 'Enter', key: 'Enter' },
         layout: {
-          left: 'calc(50% + 10px)',
-          bottom: '18px',
-          width: '68px',
-          height: '36px',
+          left: 'calc(50% + clamp(7px, 2.5vmin, 14px))',
+          bottom: 'clamp(13px, 4.5vmin, 26px)',
+          width: 'clamp(50px, 17vmin, 96px)',
+          height: 'clamp(26px, 9vmin, 50px)',
           zIndex: 100
         }
       });
