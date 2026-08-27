@@ -92,6 +92,12 @@
     iodine.attachGraphicsFrameHandler(gfx);
     if (audio) { iodine.attachAudioHandler(audio); }
 
+    // El core espera este callback para notificar cambios de play/pause;
+    // si no está definido, iodine.play() falla internamente al llamar a pause().
+    iodine.playStatusCallback = function(status) {
+      // No-op: no necesitamos reaccionar a este evento en la UI por ahora.
+    };
+
     iodine.settings.SKIPBoot = true;
     iodine.settings.dynamicSpeed = false;
     iodine.settings.offthreadGfxEnabled = false;
@@ -100,7 +106,7 @@
     function startEmulationLoop() {
       if (emulatorTimer) return;
       emulatorTimer = setInterval(() => {
-        iodine.timerCallback((+new Date()).getTime());
+        iodine.timerCallback(Date.now());
       }, 16);
     }
 
@@ -196,12 +202,24 @@
 
     async function loadROM() {
       const params = new URLSearchParams(window.location.search);
-      const romUrl = params.get('rom') || 'roms/test.gba';
+      const romUrl = params.get('rom') || 'roms/pokemon_emerald.gba';
+      const biosUrl = params.get('bios') || 'bios/gba_bios.bin';
 
       try {
-        statusText.textContent = `Descargando ROM...`;
-        const res = await fetch(romUrl);
-        if (!res.ok) throw new Error(`ROM no encontrada.`);
+        // El core requiere un BIOS real de GBA (16384 bytes) para inicializar;
+        // sin esto, play() falla internamente y se auto-pausa sin dar ningún error.
+        statusText.textContent = 'Descargando BIOS...';
+        const biosRes = await fetch(biosUrl, { cache: 'no-store' });
+        if (!biosRes.ok) throw new Error(`BIOS no encontrado (HTTP ${biosRes.status}): ${biosUrl}`);
+        const biosData = new Uint8Array(await biosRes.arrayBuffer());
+        if (biosData.length !== 0x4000) {
+          throw new Error(`BIOS inválido: se esperaban 16384 bytes, se encontraron ${biosData.length}`);
+        }
+        iodine.attachBIOS(biosData);
+
+        statusText.textContent = `Descargando ROM (${romUrl})...`;
+        const res = await fetch(romUrl, { cache: 'no-store' });
+        if (!res.ok) throw new Error(`ROM no encontrada (HTTP ${res.status}): ${romUrl}`);
 
         const buffer = await res.arrayBuffer();
         const romData = new Uint8Array(buffer);
@@ -216,7 +234,7 @@
       } catch (err) {
         console.error('Error:', err);
         spinner.style.display = 'none';
-        statusText.innerHTML = '⚠️ <b>Error al cargar</b><br><br><br><small>Toca la pantalla para reintentar</small>';
+        statusText.innerHTML = `⚠️ <b>Error al cargar</b><br><br>${err.message}<br><small>Toca la pantalla para reintentar</small>`;
         statusOverlay.onclick = () => location.reload();
       }
     }
